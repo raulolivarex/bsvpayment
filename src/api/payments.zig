@@ -334,27 +334,55 @@ pub const PaymentEngine = struct {
     }
 };
 
-/// Fee calculation: 0.5% flat — no fixed fee
-/// BSV settles at ~$0.001, so we pass the savings to merchants.
-/// Stripe charges 2.9% + 30c = $3.20 on $100. We charge $0.50.
-/// Minimum fee: 1 cent (allows true micropayments down to $0.01)
+/// Fee structure (transparent breakdown):
+///
+///   Total fee to merchant: 1.0% flat
+///   ├── Exchange cost:     0.5%  (EUR→BSV + BSV→EUR conversion spread)
+///   ├── ROXEX margin:      0.5%  (platform revenue)
+///   └── BSV network:       ~$0.001 (absorbed by ROXEX, not charged)
+///
+///   Stripe charges 2.9% + 30c = 3.2% on $100.
+///   BSVPay charges 1.0% flat  = 1.0% on $100.
+///   Merchant saves 2.2% on every transaction.
+///
+///   Minimum fee: 1 cent (enables micropayments from $0.01)
+
+/// ROXEX platform margin: 0.5%
+pub const ROXEX_MARGIN_BPS: u64 = 50; // basis points (50 = 0.5%)
+/// Exchange conversion cost: 0.5% round-trip (0.25% each way)
+pub const EXCHANGE_COST_BPS: u64 = 50; // basis points
+/// Total fee: 1.0%
+pub const TOTAL_FEE_BPS: u64 = ROXEX_MARGIN_BPS + EXCHANGE_COST_BPS;
+
+/// Total fee charged to merchant (1.0% flat, min 1 cent)
 pub fn calculateFee(amount: u64) u64 {
-    const fee = (amount * 5) / 1000; // 0.5%
+    const fee = (amount * TOTAL_FEE_BPS) / 10000;
     return if (fee < 1) 1 else fee;
 }
 
-/// Net amount after fees
+/// ROXEX revenue portion of the fee (0.5%)
+pub fn roxexMargin(amount: u64) u64 {
+    const margin = (amount * ROXEX_MARGIN_BPS) / 10000;
+    return if (margin < 1) 1 else margin;
+}
+
+/// Exchange conversion cost portion (0.5%)
+pub fn exchangeCost(amount: u64) u64 {
+    return (amount * EXCHANGE_COST_BPS) / 10000;
+}
+
+/// Net amount merchant receives after all fees
 pub fn netAmount(amount: u64) u64 {
     const fee = calculateFee(amount);
     return if (fee >= amount) 0 else amount - fee;
 }
 
-/// Compare with Stripe fees for display
+/// What Stripe would charge for comparison
 pub fn stripeFee(amount: u64) u64 {
     return (amount * 29) / 1000 + 30; // 2.9% + 30c
 }
 
-/// Savings vs Stripe
+/// How much the merchant saves vs Stripe
 pub fn savingsVsStripe(amount: u64) u64 {
     const our_fee = calculateFee(amount);
     const their_fee = stripeFee(amount);
@@ -467,17 +495,24 @@ fn deserializePayment(data: *const [PAYMENT_SIZE]u8) Payment {
 }
 
 test "fee calculation" {
-    // $10.00 = 1000 cents → 0.5% = 5 cents (vs Stripe's 59 cents)
-    try std.testing.expectEqual(@as(u64, 5), calculateFee(1000));
+    // $10.00 = 1000 cents → 1.0% = 10 cents total (vs Stripe's 59 cents)
+    try std.testing.expectEqual(@as(u64, 10), calculateFee(1000));
+    // ROXEX keeps 5 cents, exchange costs 5 cents
+    try std.testing.expectEqual(@as(u64, 5), roxexMargin(1000));
+    try std.testing.expectEqual(@as(u64, 5), exchangeCost(1000));
 
-    // $100.00 = 10000 cents → 0.5% = 50 cents (vs Stripe's $3.20)
-    try std.testing.expectEqual(@as(u64, 50), calculateFee(10000));
+    // $100.00 = 10000 cents → 1.0% = 100 cents = $1.00 (vs Stripe's $3.20)
+    try std.testing.expectEqual(@as(u64, 100), calculateFee(10000));
+    // ROXEX keeps $0.50, exchange costs $0.50
+    try std.testing.expectEqual(@as(u64, 50), roxexMargin(10000));
+    // Merchant nets $99.00
+    try std.testing.expectEqual(@as(u64, 9900), netAmount(10000));
 
-    // $0.10 = 10 cents → 0.5% = 0, min 1 cent (Stripe can't even process this)
+    // $0.10 = 10 cents → 1.0% = 0, min 1 cent
     try std.testing.expectEqual(@as(u64, 1), calculateFee(10));
 
-    // Savings vs Stripe on $100
-    try std.testing.expectEqual(@as(u64, 270), savingsVsStripe(10000));
+    // Savings vs Stripe on $100: Stripe $3.20 - BSVPay $1.00 = $2.20
+    try std.testing.expectEqual(@as(u64, 220), savingsVsStripe(10000));
 }
 
 test "payment status roundtrip" {

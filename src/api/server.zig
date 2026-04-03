@@ -28,12 +28,17 @@ pub const ApiServer = struct {
             \\
             \\  http://localhost:{d}
             \\
+            \\  Fee: 1.0% flat (Stripe: 2.9% + 30c)
+            \\    Exchange cost : 0.5% (EUR/USD <-> BSV conversion)
+            \\    ROXEX margin  : 0.5% (platform revenue)
+            \\    BSV network   : ~$0.001 (absorbed)
+            \\
             \\  Why BSVPay > Stripe:
-            \\    Fee         : 0.5% flat (Stripe: 2.9% + 30c)
-            \\    Settlement  : Instant, 0-conf (Stripe: 2-7 days)
-            \\    Micropayments: From $0.01 (Stripe: unusable < $0.50)
-            \\    Access      : Instant, global (Stripe: KYC, 46 countries)
-            \\    Payout min  : None (Stripe: $100)
+            \\    3x cheaper    : 1.0% vs 2.9% + 30c
+            \\    Instant       : 0-conf settlement (Stripe: 2-7 days)
+            \\    Micropayments : From $0.01 (Stripe: unusable < $0.50)
+            \\    Global        : No KYC delays (Stripe: 46 countries)
+            \\    No minimum    : $0 payout threshold (Stripe: $100)
             \\
             \\  Endpoints:
             \\    POST /v1/payments             Create payment
@@ -105,7 +110,7 @@ pub const ApiServer = struct {
             try self.handleCheckout(conn.stream, id);
         } else if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path, "/")) {
             try sendJsonResponse(conn.stream, 200,
-                \\{"name":"BSVPay API","version":"0.5.0","description":"Faster, cheaper, more accessible than Stripe. Powered by BSV.","fees":"0.5% flat (no fixed fee)","settlement":"Instant (0-conf, <1s)","micropayments":"From $0.01","countries":"Global, no restrictions"}
+                \\{"name":"BSVPay API","version":"0.5.0","description":"Faster, cheaper, more accessible than Stripe. Powered by BSV.","fees":{"total":"1.0% flat","breakdown":{"exchange_cost":"0.5%","platform_margin":"0.5%","bsv_network":"~$0.001 (absorbed)"}},"settlement":"Instant (0-conf, <1s)","micropayments":"From $0.01","countries":"Global, no restrictions"}
             );
         } else {
             try sendJsonResponse(conn.stream, 404, "{\"error\":\"Not found\"}");
@@ -189,11 +194,13 @@ pub const ApiServer = struct {
 
         const fee = payments_mod.calculateFee(payment.amount);
         const net = payments_mod.netAmount(payment.amount);
+        const roxex_cut = payments_mod.roxexMargin(payment.amount);
+        const exch_cost = payments_mod.exchangeCost(payment.amount);
         const stripe_fee = payments_mod.stripeFee(payment.amount);
         const savings = payments_mod.savingsVsStripe(payment.amount);
 
         const json = std.fmt.allocPrint(self.allocator,
-            \\{{"id":"{s}","amount":{d},"currency":"{s}","status":"{s}","bsv_satoshis":{d},"fee":{d},"fee_pct":"0.5%","net_amount":{d},"stripe_would_charge":{d},"you_save":{d},"settlement":"instant","refunded_amount":{d},"description":"{s}"}}
+            \\{{"id":"{s}","amount":{d},"currency":"{s}","status":"{s}","bsv_satoshis":{d},"fee":{{"total":{d},"exchange_cost":{d},"platform_margin":{d},"pct":"1.0%"}},"net_amount":{d},"stripe_would_charge":{d},"you_save":{d},"settlement":"instant","refunded_amount":{d},"description":"{s}"}}
         , .{
             payment.getId(),
             payment.amount,
@@ -201,6 +208,8 @@ pub const ApiServer = struct {
             payment.status.toString(),
             payment.bsv_satoshis,
             fee,
+            exch_cost,
+            roxex_cut,
             net,
             stripe_fee,
             savings,
@@ -231,16 +240,18 @@ pub const ApiServer = struct {
 
         const fee = payments_mod.calculateFee(payment.amount);
         const net = payments_mod.netAmount(payment.amount);
+        const roxex_cut = payments_mod.roxexMargin(payment.amount);
         const savings = payments_mod.savingsVsStripe(payment.amount);
 
         const json = std.fmt.allocPrint(self.allocator,
-            \\{{"id":"{s}","status":"{s}","amount":{d},"currency":"{s}","fee":{d},"net_amount":{d},"saved_vs_stripe":{d},"bsv_satoshis":{d},"settlement":"instant","confirmed":true}}
+            \\{{"id":"{s}","status":"{s}","amount":{d},"currency":"{s}","fee":{d},"roxex_revenue":{d},"net_amount":{d},"saved_vs_stripe":{d},"bsv_satoshis":{d},"settlement":"instant","confirmed":true}}
         , .{
             payment.getId(),
             payment.status.toString(),
             payment.amount,
             payment.currency.symbol(),
             fee,
+            roxex_cut,
             net,
             savings,
             payment.bsv_satoshis,
@@ -250,11 +261,12 @@ pub const ApiServer = struct {
         };
         defer self.allocator.free(json);
 
-        std.debug.print("    Payment {s} confirmed: {d} {s} (fee: {d}c, saved {d}c vs Stripe)\n", .{
+        std.debug.print("    Payment {s}: {d} {s} | fee {d}c (ROXEX: {d}c) | saved {d}c vs Stripe\n", .{
             payment.getId(),
             payment.amount,
             payment.currency.symbol(),
             fee,
+            roxex_cut,
             savings,
         });
 
