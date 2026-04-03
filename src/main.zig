@@ -64,7 +64,7 @@ pub fn main() !void {
             try cmdAccountLogin(allocator);
         } else if (std.mem.eql(u8, sub, "deposit")) {
             if (args.len < 5) {
-                std.debug.print("Usage: bsv-pay account deposit <currency> <amount>\n", .{});
+                std.debug.print("Usage: roxexpay account deposit <currency> <amount>\n", .{});
                 std.debug.print("  currency: BSV, USD, EUR\n", .{});
                 std.debug.print("  amount: in smallest unit (satoshis/cents)\n", .{});
                 return;
@@ -72,7 +72,7 @@ pub fn main() !void {
             try cmdAccountDeposit(allocator, args[3], args[4]);
         } else if (std.mem.eql(u8, sub, "withdraw")) {
             if (args.len < 5) {
-                std.debug.print("Usage: bsv-pay account withdraw <currency> <amount>\n", .{});
+                std.debug.print("Usage: roxexpay account withdraw <currency> <amount>\n", .{});
                 return;
             }
             try cmdAccountWithdraw(allocator, args[3], args[4]);
@@ -128,19 +128,19 @@ pub fn main() !void {
 
         if (std.mem.eql(u8, sub, "create")) {
             if (args.len < 4) {
-                std.debug.print("Usage: bsv-pay wallet create <name>\n", .{});
+                std.debug.print("Usage: roxexpay wallet create <name>\n", .{});
                 return;
             }
             try cmdWalletCreate(allocator, args[3]);
         } else if (std.mem.eql(u8, sub, "restore")) {
             if (args.len < 4) {
-                std.debug.print("Usage: bsv-pay wallet restore <name>\n", .{});
+                std.debug.print("Usage: roxexpay wallet restore <name>\n", .{});
                 return;
             }
             try cmdWalletRestore(allocator, args[3]);
         } else if (std.mem.eql(u8, sub, "open")) {
             if (args.len < 4) {
-                std.debug.print("Usage: bsv-pay wallet open <name>\n", .{});
+                std.debug.print("Usage: roxexpay wallet open <name>\n", .{});
                 return;
             }
             try cmdWalletOpen(allocator, args[3]);
@@ -148,7 +148,7 @@ pub fn main() !void {
             try cmdWalletList(allocator);
         } else if (std.mem.eql(u8, sub, "delete")) {
             if (args.len < 4) {
-                std.debug.print("Usage: bsv-pay wallet delete <name>\n", .{});
+                std.debug.print("Usage: roxexpay wallet delete <name>\n", .{});
                 return;
             }
             try cmdWalletDelete(allocator, args[3]);
@@ -160,12 +160,12 @@ pub fn main() !void {
         try cmdGenerate(allocator);
     } else if (std.mem.eql(u8, command, "balance")) {
         if (args.len < 3) {
-            std.debug.print("Usage: bsv-pay balance <address>\n", .{});
+            std.debug.print("Usage: roxexpay balance <address>\n", .{});
             return;
         }
         try cmdBalance(allocator, args[2]);
     } else if (std.mem.eql(u8, command, "version")) {
-        std.debug.print("bsv-pay v{s} — Ultra-fast BSV payments in Zig\n", .{VERSION});
+        std.debug.print("roxexpay v{s} — Ultra-fast payments\n", .{VERSION});
     } else {
         std.debug.print("Unknown command: {s}\n", .{command});
         printUsage();
@@ -176,8 +176,8 @@ fn printUsage() void {
     std.debug.print(
         \\
         \\  ╔══════════════════════════════════════╗
-        \\  ║         bsv-pay v{s}              ║
-        \\  ║   Ultra-fast BSV payments in Zig     ║
+        \\  ║         roxexpay v{s}             ║
+        \\  ║      Ultra-fast payments             ║
         \\  ╚══════════════════════════════════════╝
         \\
         \\  PAYMENT API (Stripe-style):
@@ -234,10 +234,10 @@ fn printAccountUsage() void {
         \\    account list                 List accounts
         \\
         \\  Examples:
-        \\    bsv-pay account deposit USD 10000     # Deposit $100.00
-        \\    bsv-pay account deposit EUR 5000      # Deposit €50.00
-        \\    bsv-pay account deposit BSV 100000    # Deposit 0.00100000 BSV
-        \\    bsv-pay account withdraw USD 2500     # Withdraw $25.00
+        \\    roxexpay account deposit USD 10000     # Deposit $100.00
+        \\    roxexpay account deposit EUR 5000      # Deposit €50.00
+        \\    roxexpay account deposit BSV 100000    # Deposit 0.00100000 BSV
+        \\    roxexpay account withdraw USD 2500     # Withdraw $25.00
         \\
     , .{});
 }
@@ -592,7 +592,7 @@ fn cmdAccountList(allocator: std.mem.Allocator) !void {
     }
 
     if (names.len == 0) {
-        std.debug.print("\n  No accounts found. Create one with: bsv-pay account register\n", .{});
+        std.debug.print("\n  No accounts found. Create one with: roxexpay account register\n", .{});
         return;
     }
 
@@ -1079,7 +1079,7 @@ fn printApiUsage() void {
         \\    api start [port]    Start REST API server (default: 3000)
         \\
         \\  Example:
-        \\    bsv-pay api start 8080
+        \\    roxexpay api start 8080
         \\
     , .{});
 }
@@ -1160,14 +1160,14 @@ fn cmdMerchantRegister(allocator: std.mem.Allocator) !void {
         \\  │  ⚠ Never share your secret key!                       │
         \\  └──────────────────────────────────────────────────────┘
         \\
-        \\  Why BSVPay:
+        \\  Why ROXEXPay:
         \\    Fee: 0.5% flat (Stripe charges 2.9% + 30c)
         \\    Settlement: Instant (Stripe: 2-7 days)
         \\    Micropayments: From $0.01
         \\    Access: Global, no KYC delays
         \\
         \\  Quick start:
-        \\    1. bsv-pay api start
+        \\    1. roxexpay api start
         \\    2. curl -X POST http://localhost:3000/v1/payments \
         \\         -H "Authorization: Bearer {s}" \
         \\         -d '{{"amount":1000,"currency":"EUR","description":"Order #123"}}'
@@ -1311,7 +1311,7 @@ fn cmdMerchantList(allocator: std.mem.Allocator) !void {
     }
 
     if (ids.len == 0) {
-        std.debug.print("\n  No merchants. Register with: bsv-pay merchant register\n", .{});
+        std.debug.print("\n  No merchants. Register with: roxexpay merchant register\n", .{});
         return;
     }
 

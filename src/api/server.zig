@@ -21,21 +21,21 @@ pub const ApiServer = struct {
         std.debug.print(
             \\
             \\  ╔══════════════════════════════════════════════╗
-            \\  ║              BSVPay API Server                ║
+            \\  ║            ROXEXPay API Server                 ║
             \\  ║   Faster, cheaper & more accessible           ║
-            \\  ║   than Stripe. Powered by BSV.                ║
+            \\  ║   than Stripe.                                ║
             \\  ╚══════════════════════════════════════════════╝
             \\
             \\  http://localhost:{d}
             \\
             \\  Fee: 1.0% flat (Stripe: 2.9% + 30c)
-            \\    Exchange cost : 0.5% (EUR/USD <-> BSV conversion)
+            \\    Exchange cost : 0.5% (currency conversion)
             \\    ROXEX margin  : 0.5% (platform revenue)
-            \\    BSV network   : ~$0.001 (absorbed)
+            \\    Network fee   : ~$0.001 (absorbed)
             \\
-            \\  Why BSVPay > Stripe:
+            \\  Why ROXEXPay > Stripe:
             \\    3x cheaper    : 1.0% vs 2.9% + 30c
-            \\    Instant       : 0-conf settlement (Stripe: 2-7 days)
+            \\    Instant       : Instant settlement (Stripe: 2-7 days)
             \\    Micropayments : From $0.01 (Stripe: unusable < $0.50)
             \\    Global        : No KYC delays (Stripe: 46 countries)
             \\    No minimum    : $0 payout threshold (Stripe: $100)
@@ -108,10 +108,15 @@ pub const ApiServer = struct {
         } else if (std.mem.eql(u8, method, "GET") and std.mem.startsWith(u8, path, "/v1/checkout/")) {
             const id = path[13..];
             try self.handleCheckout(conn.stream, id);
-        } else if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path, "/")) {
+        } else if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path, "/v1")) {
             try sendJsonResponse(conn.stream, 200,
-                \\{"name":"BSVPay API","version":"0.5.0","description":"Faster, cheaper, more accessible than Stripe. Powered by BSV.","fees":{"total":"1.0% flat","breakdown":{"exchange_cost":"0.5%","platform_margin":"0.5%","bsv_network":"~$0.001 (absorbed)"}},"settlement":"Instant (0-conf, <1s)","micropayments":"From $0.01","countries":"Global, no restrictions"}
+                \\{"name":"ROXEXPay API","version":"0.5.0","description":"Faster, cheaper, more accessible than Stripe.","fees":{"total":"1.0% flat","breakdown":{"exchange_cost":"0.5%","platform_margin":"0.5%","network":"~$0.001 (absorbed)"}},"settlement":"Instant (0-conf, <1s)","micropayments":"From $0.01","countries":"Global, no restrictions"}
             );
+        } else if (std.mem.eql(u8, method, "GET")) {
+            // Serve static files from web/
+            self.handleStaticFile(conn.stream, path) catch {
+                try sendJsonResponse(conn.stream, 404, "{\"error\":\"Not found\"}");
+            };
         } else {
             try sendJsonResponse(conn.stream, 404, "{\"error\":\"Not found\"}");
         }
@@ -348,6 +353,70 @@ pub const ApiServer = struct {
         defer self.allocator.free(json);
 
         try sendJsonResponse(stream, 200, json);
+    }
+
+    /// Serve static files from web/ directory
+    fn handleStaticFile(self: ApiServer, stream: std.net.Stream, path: []const u8) !void {
+        _ = self;
+
+        // Map URL path to file path
+        const file_path = if (std.mem.eql(u8, path, "/"))
+            "web/index.html"
+        else if (path.len > 1 and path[0] == '/')
+            path[1..] // strip leading /
+        else
+            return error.NotFound;
+
+        // Prepend web/ if not already there
+        var full_path_buf: [512]u8 = undefined;
+        const full_path = if (std.mem.startsWith(u8, file_path, "web/"))
+            file_path
+        else blk: {
+            const fp = std.fmt.bufPrint(&full_path_buf, "web/{s}", .{file_path}) catch return error.NotFound;
+            break :blk fp;
+        };
+
+        // Security: prevent directory traversal
+        if (std.mem.indexOf(u8, full_path, "..") != null) return error.NotFound;
+
+        // Read file
+        const cwd = std.fs.cwd();
+        const file = cwd.openFile(full_path, .{}) catch return error.NotFound;
+        defer file.close();
+
+        const stat = file.stat() catch return error.NotFound;
+        if (stat.size > 2 * 1024 * 1024) return error.NotFound; // 2MB max
+
+        var file_buf: [2 * 1024 * 1024]u8 = undefined;
+        const bytes_read = file.readAll(&file_buf) catch return error.NotFound;
+        const content = file_buf[0..bytes_read];
+
+        // Detect content type from extension
+        const content_type = if (std.mem.endsWith(u8, full_path, ".html"))
+            "text/html; charset=utf-8"
+        else if (std.mem.endsWith(u8, full_path, ".css"))
+            "text/css; charset=utf-8"
+        else if (std.mem.endsWith(u8, full_path, ".js"))
+            "application/javascript; charset=utf-8"
+        else if (std.mem.endsWith(u8, full_path, ".json"))
+            "application/json"
+        else if (std.mem.endsWith(u8, full_path, ".png"))
+            "image/png"
+        else if (std.mem.endsWith(u8, full_path, ".svg"))
+            "image/svg+xml"
+        else if (std.mem.endsWith(u8, full_path, ".ico"))
+            "image/x-icon"
+        else
+            "application/octet-stream";
+
+        var hdr_buf: [512]u8 = undefined;
+        const header = std.fmt.bufPrint(&hdr_buf,
+            "HTTP/1.1 200 OK\r\nContent-Type: {s}\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: {d}\r\nConnection: close\r\n\r\n",
+            .{ content_type, content.len },
+        ) catch return error.NotFound;
+
+        _ = stream.write(header) catch return;
+        _ = stream.write(content) catch return;
     }
 
     /// GET /v1/checkout/:id — Serve checkout HTML page

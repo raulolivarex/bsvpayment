@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#635bff">
+  <title>ROXEXPay App</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root {
+      --primary: #635bff;
+      --primary-dark: #4b45c6;
+      --bg: #f6f9fc;
+      --text: #425466;
+      --text-dark: #1a1f36;
+      --text-light: #8898aa;
+      --white: #ffffff;
+      --border: #e3e8ee;
+      --success: #3ecf8e;
+      --warning: #f5a623;
+      --danger: #e25950;
+      --radius: 12px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh;
+      -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    }
+
+    /* App Shell */
+    .app-header {
+      background: var(--primary); color: white; padding: 16px 20px;
+      padding-top: max(16px, env(safe-area-inset-top));
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .app-header h1 { font-size: 20px; font-weight: 700; }
+    .app-header .balance-pill {
+      background: rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 20px;
+      font-size: 14px; font-weight: 600;
+    }
+
+    .app-content {
+      padding: 0 0 80px; min-height: calc(100vh - 56px);
+    }
+
+    /* Tab Bar */
+    .tab-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: white; border-top: 1px solid var(--border);
+      display: flex; padding-bottom: max(8px, env(safe-area-inset-bottom));
+      z-index: 100;
+    }
+    .tab-bar a {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 10px 0; text-decoration: none; color: var(--text-light);
+      font-size: 10px; font-weight: 600; transition: color 0.2s;
+    }
+    .tab-bar a.active { color: var(--primary); }
+    .tab-bar a .tab-icon { font-size: 22px; margin-bottom: 2px; }
+
+    /* Screens */
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ─── POS Screen ─── */
+    .pos-display {
+      background: white; margin: 16px; border-radius: 16px;
+      padding: 40px 20px; text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .pos-display .currency-label {
+      font-size: 14px; color: var(--text-light); font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .pos-amount-display {
+      font-size: 56px; font-weight: 800; color: var(--text-dark);
+      min-height: 70px; line-height: 1;
+    }
+    .pos-keypad {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+      margin: 16px; max-width: 360px; margin-left: auto; margin-right: auto;
+    }
+    .pos-keypad button {
+      background: white; border: 1px solid var(--border); border-radius: 12px;
+      font-size: 24px; font-weight: 600; color: var(--text-dark);
+      padding: 18px; cursor: pointer; transition: all 0.15s;
+    }
+    .pos-keypad button:active { background: var(--bg); transform: scale(0.95); }
+    .pos-keypad .key-action {
+      background: var(--primary); color: white; border-color: var(--primary);
+    }
+    .pos-keypad .key-action:active { background: var(--primary-dark); }
+    .pos-keypad .key-delete { color: var(--danger); }
+
+    .pos-currency-toggle {
+      display: flex; gap: 8px; justify-content: center; margin-bottom: 16px;
+    }
+    .pos-currency-toggle button {
+      padding: 8px 20px; border-radius: 20px; border: 2px solid var(--border);
+      background: white; font-size: 14px; font-weight: 600; color: var(--text);
+      cursor: pointer;
+    }
+    .pos-currency-toggle button.active {
+      border-color: var(--primary); background: rgba(99,91,255,0.08); color: var(--primary);
+    }
+
+    /* ─── Send Screen ─── */
+    .send-section { padding: 16px; }
+    .send-card {
+      background: white; border-radius: 16px; padding: 24px;
+      margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .send-card h3 { font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 4px; }
+    .send-card p { font-size: 13px; color: var(--text-light); margin-bottom: 16px; }
+    .send-input {
+      width: 100%; padding: 14px 16px; border: 2px solid var(--border);
+      border-radius: var(--radius); font-size: 16px; margin-bottom: 12px;
+      transition: border-color 0.2s;
+    }
+    .send-input:focus { outline: none; border-color: var(--primary); }
+    .send-row { display: flex; gap: 8px; }
+    .send-row .send-input { flex: 1; }
+    .send-row select { flex: 0 0 80px; }
+
+    .app-btn {
+      width: 100%; padding: 16px; border: none; border-radius: var(--radius);
+      font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+    }
+    .app-btn-primary { background: var(--primary); color: white; }
+    .app-btn-primary:active { background: var(--primary-dark); transform: scale(0.98); }
+    .app-btn-outline {
+      background: transparent; color: var(--primary); border: 2px solid var(--primary);
+    }
+    .app-btn-outline:active { background: rgba(99,91,255,0.08); }
+
+    .quick-contacts {
+      display: flex; gap: 16px; overflow-x: auto; padding: 8px 0;
+      -webkit-overflow-scrolling: touch;
+    }
+    .quick-contact {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      min-width: 64px; cursor: pointer;
+    }
+    .quick-contact .avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(99,91,255,0.1); display: flex; align-items: center;
+      justify-content: center; font-size: 18px; font-weight: 700; color: var(--primary);
+    }
+    .quick-contact .name { font-size: 11px; color: var(--text-light); font-weight: 500; }
+
+    /* ─── Activity Screen ─── */
+    .activity-section { padding: 16px; }
+    .activity-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px;
+    }
+    .activity-header h2 { font-size: 20px; font-weight: 700; color: var(--text-dark); }
+    .activity-filter {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+      background: white; font-size: 13px; color: var(--text); cursor: pointer;
+    }
+    .activity-item {
+      background: white; border-radius: 12px; padding: 16px;
+      margin-bottom: 8px; display: flex; align-items: center; gap: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .activity-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .activity-icon.incoming { background: rgba(62,207,142,0.1); }
+    .activity-icon.outgoing { background: rgba(226,89,80,0.1); }
+    .activity-icon.pending-icon { background: rgba(245,166,35,0.1); }
+    .activity-info { flex: 1; }
+    .activity-info .title { font-size: 15px; font-weight: 600; color: var(--text-dark); }
+    .activity-info .subtitle { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+    .activity-amount { text-align: right; }
+    .activity-amount .amount { font-size: 16px; font-weight: 700; }
+    .activity-amount .amount.positive { color: var(--success); }
+    .activity-amount .amount.negative { color: var(--text-dark); }
+    .activity-amount .time { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+
+    /* ─── Links Screen ─── */
+    .links-section { padding: 16px; }
+    .link-creator {
+      background: white; border-radius: 16px; padding: 24px;
+      margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .link-creator h3 { font-size: 18px; font-weight: 700; color: var(--text-dark); margin-bottom: 16px; }
+    .created-link {
+      background: var(--text-dark); border-radius: 10px; padding: 14px;
+      margin-top: 16px; display: none;
+    }
+    .created-link code { color: var(--success); font-size: 13px; word-break: break-all; }
+    .share-buttons {
+      display: flex; gap: 8px; margin-top: 12px;
+    }
+    .share-btn {
+      flex: 1; padding: 12px; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .share-wa { background: #25d366; color: white; }
+    .share-copy { background: rgba(99,91,255,0.1); color: var(--primary); }
+    .share-more { background: var(--bg); color: var(--text); }
+
+    .link-history-item {
+      background: white; border-radius: 12px; padding: 14px 16px;
+      margin-bottom: 8px; display: flex; justify-content: space-between;
+      align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .link-history-item .link-info .link-desc { font-size: 14px; font-weight: 600; color: var(--text-dark); }
+    .link-history-item .link-info .link-meta { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+    .link-status {
+      padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+    }
+    .link-status.paid { background: rgba(62,207,142,0.1); color: var(--success); }
+    .link-status.open { background: rgba(245,166,35,0.1); color: var(--warning); }
+
+    /* ─── QR Overlay ─── */
+    .qr-overlay {
+      position: fixed; inset: 0; background: white; z-index: 200;
+      display: none; flex-direction: column; align-items: center;
+      justify-content: center; padding: 32px; text-align: center;
+    }
+    .qr-overlay.active { display: flex; }
+    .qr-overlay .qr-amount {
+      font-size: 48px; font-weight: 800; color: var(--text-dark); margin-bottom: 8px;
+    }
+    .qr-overlay .qr-currency {
+      font-size: 18px; color: var(--text-light); margin-bottom: 32px;
+    }
+    .qr-box {
+      width: 240px; height: 240px; background: white; border: 3px solid var(--text-dark);
+      border-radius: 16px; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 24px;
+    }
+    .qr-box .qr-placeholder {
+      font-size: 14px; color: var(--text-light); text-align: center; line-height: 1.4;
+    }
+    .qr-waiting { font-size: 15px; color: var(--text-light); margin-bottom: 32px; }
+    .qr-waiting .dot-pulse { display: inline-block; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+    .qr-cancel {
+      padding: 14px 48px; border: 2px solid var(--border); border-radius: var(--radius);
+      background: white; font-size: 16px; font-weight: 600; color: var(--text);
+      cursor: pointer;
+    }
+    .qr-success { display: none; }
+    .qr-success .check { font-size: 64px; margin-bottom: 16px; }
+    .qr-success h2 { font-size: 24px; font-weight: 700; color: var(--text-dark); }
+    .qr-success p { font-size: 15px; color: var(--text-light); margin-top: 8px; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 48px 24px; color: var(--text-light);
+    }
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="app-header">
+    <h1><span style="opacity:0.8">ROXEX</span>Pay</h1>
+    <div class="balance-pill" id="app-balance">$0.00</div>
+  </div>
+
+  <div class="app-content">
+
+    <!-- ═══ POS Screen ═══ -->
+    <div class="screen active" id="screen-pos">
+      <div class="pos-display">
+        <div class="pos-currency-toggle">
+          <button class="active" onclick="setPOSCurrency('EUR')">EUR</button>
+          <button onclick="setPOSCurrency('USD')">USD</button>
+        </div>
+        <div class="pos-amount-display" id="pos-display">0.00</div>
+      </div>
+      <div class="pos-keypad">
+        <button onclick="posKey('1')">1</button>
+        <button onclick="posKey('2')">2</button>
+        <button onclick="posKey('3')">3</button>
+        <button onclick="posKey('4')">4</button>
+        <button onclick="posKey('5')">5</button>
+        <button onclick="posKey('6')">6</button>
+        <button onclick="posKey('7')">7</button>
+        <button onclick="posKey('8')">8</button>
+        <button onclick="posKey('9')">9</button>
+        <button class="key-delete" onclick="posKey('del')">&#9003;</button>
+        <button onclick="posKey('0')">0</button>
+        <button onclick="posKey('.')">.</button>
+        <button class="key-action" onclick="posCharge()" style="grid-column:1/-1;font-size:18px">Charge</button>
+      </div>
+    </div>
+
+    <!-- ═══ Send Screen ═══ -->
+    <div class="screen" id="screen-send">
+      <div class="send-section">
+        <!-- Quick Contacts -->
+        <div class="send-card">
+          <h3>Send or request</h3>
+          <p>Instant payments to any phone number</p>
+          <div class="quick-contacts" id="quick-contacts">
+            <div class="quick-contact" onclick="fillPhone('+34 612 345 678')">
+              <div class="avatar">MA</div><div class="name">Maria</div>
+            </div>
+            <div class="quick-contact" onclick="fillPhone('+34 698 765 432')">
+              <div class="avatar">JL</div><div class="name">Jose</div>
+            </div>
+            <div class="quick-contact" onclick="fillPhone('+49 170 1234567')">
+              <div class="avatar">AK</div><div class="name">Anna</div>
+            </div>
+            <div class="quick-contact" onclick="fillPhone('+1 555 0123')">
+              <div class="avatar">MJ</div><div class="name">Mike</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="send-card">
+          <input class="send-input" type="tel" id="app-send-phone" placeholder="Phone number (+34 600...)">
+          <div class="send-row">
+            <input class="send-input" type="text" id="app-send-amount" placeholder="Amount" inputmode="decimal">
+            <select class="send-input" id="app-send-currency" style="flex:0 0 80px">
+              <option value="EUR">EUR</option>
+              <option value="USD">USD</option>
+            </select>
+          </div>
+          <input class="send-input" type="text" id="app-send-note" placeholder="Note (optional)">
+          <div style="display:flex;gap:8px">
+            <button class="app-btn app-btn-primary" style="flex:1" onclick="appSend()">Send</button>
+            <button class="app-btn app-btn-outline" style="flex:1" onclick="appRequest()">Request</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Activity Screen ═══ -->
+    <div class="screen" id="screen-activity">
+      <div class="activity-section">
+        <div class="activity-header">
+          <h2>Activity</h2>
+          <select class="activity-filter" id="activity-filter" onchange="renderActivity()">
+            <option value="all">All</option>
+            <option value="incoming">Incoming</option>
+            <option value="outgoing">Outgoing</option>
+          </select>
+        </div>
+        <div id="activity-list">
+          <div class="empty-state">
+            <div class="empty-icon">&#128203;</div>
+            <p>No transactions yet.<br>Charge a customer or send a payment to get started.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Links Screen ═══ -->
+    <div class="screen" id="screen-links">
+      <div class="links-section">
+        <div class="link-creator">
+          <h3>Create payment link</h3>
+          <input class="send-input" type="text" id="app-link-amount" placeholder="Amount" inputmode="decimal">
+          <div class="send-row">
+            <select class="send-input" id="app-link-currency">
+              <option value="EUR">EUR</option>
+              <option value="USD">USD</option>
+            </select>
+            <input class="send-input" type="text" id="app-link-desc" placeholder="Description">
+          </div>
+          <button class="app-btn app-btn-primary" onclick="appCreateLink()">Generate link</button>
+          <div class="created-link" id="app-link-result">
+            <code id="app-link-url"></code>
+            <div class="share-buttons">
+              <button class="share-btn share-wa" onclick="appShareWA()">WhatsApp</button>
+              <button class="share-btn share-copy" onclick="appCopyLink()">Copy</button>
+              <button class="share-btn share-more" onclick="appShareNative()">Share</button>
+            </div>
+          </div>
+        </div>
+        <h3 style="font-size:16px;font-weight:700;color:var(--text-dark);margin-bottom:12px">Recent links</h3>
+        <div id="links-history">
+          <div class="empty-state">
+            <div class="empty-icon">&#128279;</div>
+            <p>No links created yet.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- QR Overlay -->
+  <div class="qr-overlay" id="qr-overlay">
+    <div id="qr-main">
+      <div class="qr-amount" id="qr-amount">$0.00</div>
+      <div class="qr-currency" id="qr-currency">EUR</div>
+      <div class="qr-box">
+        <div class="qr-placeholder">&#9633;&#9633;&#9633;<br>QR Code<br>&#9633;&#9633;&#9633;</div>
+      </div>
+      <div class="qr-waiting">Waiting for payment<span class="dot-pulse">...</span></div>
+      <button class="qr-cancel" onclick="closeQR()">Cancel</button>
+    </div>
+    <div class="qr-success" id="qr-success">
+      <div class="check">&#10003;</div>
+      <h2>Payment received!</h2>
+      <p id="qr-success-detail"></p>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <a href="#" class="active" onclick="showTab('pos')">
+      <span class="tab-icon">&#128179;</span>POS
+    </a>
+    <a href="#" onclick="showTab('send')">
+      <span class="tab-icon">&#128172;</span>Send
+    </a>
+    <a href="#" onclick="showTab('activity')">
+      <span class="tab-icon">&#128203;</span>Activity
+    </a>
+    <a href="#" onclick="showTab('links')">
+      <span class="tab-icon">&#128279;</span>Links
+    </a>
+  </div>
+
+  <script>
+    // ─── State ───
+    let posCurrency = 'EUR';
+    let posValue = '';
+    let transactions = JSON.parse(localStorage.getItem('roxexpay_app_tx') || '[]');
+    let links = JSON.parse(localStorage.getItem('roxexpay_app_links') || '[]');
+
+    // ─── Tabs ───
+    function showTab(name) {
+      document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+      document.getElementById('screen-' + name).classList.add('active');
+      document.querySelectorAll('.tab-bar a').forEach(function(a, i) {
+        a.classList.toggle('active', ['pos','send','activity','links'][i] === name);
+      });
+      if (name === 'activity') renderActivity();
+    }
+
+    // ─── POS ───
+    function setPOSCurrency(c) {
+      posCurrency = c;
+      document.querySelectorAll('.pos-currency-toggle button').forEach(function(b) {
+        b.classList.toggle('active', b.textContent === c);
+      });
+    }
+
+    function posKey(k) {
+      if (k === 'del') {
+        posValue = posValue.slice(0, -1);
+      } else if (k === '.') {
+        if (posValue.indexOf('.') === -1) posValue += posValue ? '.' : '0.';
+      } else {
+        if (posValue.indexOf('.') !== -1 && posValue.split('.')[1].length >= 2) return;
+        posValue += k;
+      }
+      document.getElementById('pos-display').textContent = posValue || '0.00';
+    }
+
+    function posCharge() {
+      var amount = parseFloat(posValue);
+      if (!amount || amount <= 0) return alert('Enter an amount');
+      var cents = Math.round(amount * 100);
+
+      // Show QR
+      document.getElementById('qr-amount').textContent =
+        (posCurrency === 'EUR' ? '\u20AC' : '$') + amount.toFixed(2);
+      document.getElementById('qr-currency').textContent = posCurrency;
+      document.getElementById('qr-overlay').classList.add('active');
+      document.getElementById('qr-main').style.display = 'block';
+      document.getElementById('qr-success').style.display = 'none';
+
+      // Simulate payment after 2.5s
+      setTimeout(function() {
+        var fee = Math.max(1, Math.round(cents * 0.01));
+        transactions.unshift({
+          id: 'pay_' + randomHex(12),
+          type: 'incoming',
+          amount: cents,
+          fee: fee,
+          currency: posCurrency,
+          description: 'POS payment',
+          time: Date.now()
+        });
+        saveTx();
+        updateBalance();
+
+        document.getElementById('qr-main').style.display = 'none';
+        document.getElementById('qr-success').style.display = 'block';
+        document.getElementById('qr-success-detail').textContent =
+          (posCurrency === 'EUR' ? '\u20AC' : '$') + amount.toFixed(2) + ' ' + posCurrency + ' received';
+
+        posValue = '';
+        document.getElementById('pos-display').textContent = '0.00';
+
+        setTimeout(function() { closeQR(); }, 2000);
+      }, 2500);
+    }
+
+    function closeQR() {
+      document.getElementById('qr-overlay').classList.remove('active');
+    }
+
+    // ─── Send ───
+    function fillPhone(phone) {
+      document.getElementById('app-send-phone').value = phone;
+      document.getElementById('app-send-amount').focus();
+    }
+
+    function appSend() {
+      var phone = document.getElementById('app-send-phone').value.trim();
+      var amount = parseFloat(document.getElementById('app-send-amount').value);
+      var currency = document.getElementById('app-send-currency').value;
+      var note = document.getElementById('app-send-note').value.trim();
+      if (!phone) return alert('Enter a phone number');
+      if (!amount || amount <= 0) return alert('Enter a valid amount');
+
+      var cents = Math.round(amount * 100);
+      var fee = Math.max(1, Math.round(cents * 0.01));
+      transactions.unshift({
+        id: 'pay_' + randomHex(12),
+        type: 'outgoing',
+        amount: cents,
+        fee: fee,
+        currency: currency,
+        description: 'Sent to ' + phone + (note ? ' \u2014 ' + note : ''),
+        time: Date.now()
+      });
+      saveTx();
+      updateBalance();
+      clearSendForm();
+      alert('Sent ' + (currency === 'EUR' ? '\u20AC' : '$') + amount.toFixed(2) + ' to ' + phone);
+    }
+
+    function appRequest() {
+      var phone = document.getElementById('app-send-phone').value.trim();
+      var amount = parseFloat(document.getElementById('app-send-amount').value);
+      var currency = document.getElementById('app-send-currency').value;
+      var note = document.getElementById('app-send-note').value.trim();
+      if (!phone) return alert('Enter a phone number');
+      if (!amount || amount <= 0) return alert('Enter a valid amount');
+
+      var cents = Math.round(amount * 100);
+      transactions.unshift({
+        id: 'pay_' + randomHex(12),
+        type: 'pending',
+        amount: cents,
+        fee: 0,
+        currency: currency,
+        description: 'Requested from ' + phone + (note ? ' \u2014 ' + note : ''),
+        time: Date.now()
+      });
+      saveTx();
+      clearSendForm();
+      alert('Requested ' + (currency === 'EUR' ? '\u20AC' : '$') + amount.toFixed(2) + ' from ' + phone);
+    }
+
+    function clearSendForm() {
+      document.getElementById('app-send-phone').value = '';
+      document.getElementById('app-send-amount').value = '';
+      document.getElementById('app-send-note').value = '';
+    }
+
+    // ─── Activity ───
+    function renderActivity() {
+      var filter = document.getElementById('activity-filter').value;
+      var filtered = transactions.filter(function(t) {
+        if (filter === 'all') return true;
+        return t.type === filter;
+      });
+
+      var list = document.getElementById('activity-list');
+      if (filtered.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128203;</div><p>No transactions yet.</p></div>';
+        return;
+      }
+
+      list.innerHTML = filtered.map(function(t) {
+        var icon = t.type === 'incoming' ? '&#8595;' : t.type === 'outgoing' ? '&#8593;' : '&#8635;';
+        var iconClass = t.type === 'incoming' ? 'incoming' : t.type === 'outgoing' ? 'outgoing' : 'pending-icon';
+        var sign = t.type === 'incoming' ? '+' : t.type === 'outgoing' ? '-' : '';
+        var amtClass = t.type === 'incoming' ? 'positive' : 'negative';
+        var sym = t.currency === 'EUR' ? '\u20AC' : '$';
+        return '<div class="activity-item">' +
+          '<div class="activity-icon ' + iconClass + '">' + icon + '</div>' +
+          '<div class="activity-info"><div class="title">' + t.description + '</div>' +
+          '<div class="subtitle">' + t.id + '</div></div>' +
+          '<div class="activity-amount"><div class="amount ' + amtClass + '">' + sign + sym + (t.amount / 100).toFixed(2) + '</div>' +
+          '<div class="time">' + timeAgo(t.time) + '</div></div></div>';
+      }).join('');
+    }
+
+    // ─── Links ───
+    function appCreateLink() {
+      var amount = parseFloat(document.getElementById('app-link-amount').value);
+      var currency = document.getElementById('app-link-currency').value;
+      var desc = document.getElementById('app-link-desc').value.trim();
+      if (!amount || amount <= 0) return alert('Enter an amount');
+
+      var linkId = randomHex(8);
+      var url = 'https://pay.roxexpay.io/link/' + linkId;
+      var cents = Math.round(amount * 100);
+
+      links.unshift({
+        id: linkId,
+        amount: cents,
+        currency: currency,
+        description: desc || 'Payment link',
+        url: url,
+        status: 'open',
+        time: Date.now()
+      });
+      localStorage.setItem('roxexpay_app_links', JSON.stringify(links));
+
+      document.getElementById('app-link-url').textContent = url;
+      document.getElementById('app-link-result').style.display = 'block';
+      renderLinks();
+    }
+
+    function appShareWA() {
+      var url = document.getElementById('app-link-url').textContent;
+      window.open('https://wa.me/?text=' + encodeURIComponent('Pay here: ' + url), '_blank');
+    }
+
+    function appCopyLink() {
+      var url = document.getElementById('app-link-url').textContent;
+      navigator.clipboard.writeText(url).then(function() { alert('Copied!'); });
+    }
+
+    function appShareNative() {
+      var url = document.getElementById('app-link-url').textContent;
+      if (navigator.share) {
+        navigator.share({ title: 'ROXEXPay Payment', url: url });
+      } else {
+        appCopyLink();
+      }
+    }
+
+    function renderLinks() {
+      var container = document.getElementById('links-history');
+      if (links.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128279;</div><p>No links created yet.</p></div>';
+        return;
+      }
+      container.innerHTML = links.map(function(l) {
+        var sym = l.currency === 'EUR' ? '\u20AC' : '$';
+        return '<div class="link-history-item">' +
+          '<div class="link-info"><div class="link-desc">' + l.description + '</div>' +
+          '<div class="link-meta">' + sym + (l.amount / 100).toFixed(2) + ' ' + l.currency + ' \u00B7 ' + timeAgo(l.time) + '</div></div>' +
+          '<span class="link-status ' + l.status + '">' + l.status + '</span></div>';
+      }).join('');
+    }
+
+    // ─── Helpers ───
+    function randomHex(n) {
+      var arr = new Uint8Array(n);
+      crypto.getRandomValues(arr);
+      return Array.from(arr).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    }
+
+    function timeAgo(ts) {
+      var d = Date.now() - ts;
+      if (d < 60000) return 'just now';
+      if (d < 3600000) return Math.floor(d / 60000) + 'm ago';
+      if (d < 86400000) return Math.floor(d / 3600000) + 'h ago';
+      return new Date(ts).toLocaleDateString();
+    }
+
+    function saveTx() {
+      localStorage.setItem('roxexpay_app_tx', JSON.stringify(transactions));
+    }
+
+    function updateBalance() {
+      var bal = transactions.reduce(function(s, t) {
+        if (t.type === 'incoming') return s + t.amount - t.fee;
+        if (t.type === 'outgoing') return s - t.amount;
+        return s;
+      }, 0);
+      document.getElementById('app-balance').textContent = '$' + (Math.max(0, bal) / 100).toFixed(2);
+    }
+
+    // Init
+    updateBalance();
+    renderLinks();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROXEXPay — API Documentation</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .docs-layout { display: flex; padding-top: 65px; min-height: 100vh; }
+    .docs-sidebar {
+      width: 260px; background: white; border-right: 1px solid var(--border);
+      position: fixed; left: 0; top: 65px; bottom: 0; overflow-y: auto; padding: 24px 0;
+    }
+    .docs-sidebar h4 {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text-light); padding: 8px 24px; margin-top: 16px;
+    }
+    .docs-sidebar a {
+      display: block; padding: 8px 24px; font-size: 14px; color: var(--text);
+      transition: all 0.15s;
+    }
+    .docs-sidebar a:hover, .docs-sidebar a.active {
+      color: var(--primary); background: rgba(99,91,255,0.04);
+    }
+    .docs-main { margin-left: 260px; flex: 1; padding: 48px; max-width: 880px; }
+    .docs-main h1 { font-size: 36px; font-weight: 800; color: var(--text-dark); margin-bottom: 16px; }
+    .docs-main h2 { font-size: 24px; font-weight: 700; color: var(--text-dark); margin: 48px 0 16px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .docs-main h3 { font-size: 18px; font-weight: 700; color: var(--text-dark); margin: 32px 0 12px; }
+    .docs-main p { font-size: 15px; line-height: 1.7; color: var(--text); margin-bottom: 16px; }
+    .docs-main ul, .docs-main ol { margin: 0 0 16px 24px; }
+    .docs-main li { font-size: 15px; line-height: 1.7; color: var(--text); margin-bottom: 4px; }
+    .endpoint {
+      background: white; border: 1px solid var(--border); border-radius: 12px;
+      margin: 24px 0; overflow: hidden;
+    }
+    .endpoint-header {
+      display: flex; align-items: center; gap: 12px; padding: 16px 20px;
+      border-bottom: 1px solid var(--border); background: var(--bg);
+    }
+    .method {
+      display: inline-block; padding: 4px 10px; border-radius: 4px;
+      font-size: 12px; font-weight: 700; font-family: monospace;
+    }
+    .method-post { background: rgba(99,91,255,0.1); color: var(--primary); }
+    .method-get { background: rgba(62,207,142,0.1); color: var(--success); }
+    .endpoint-path { font-family: 'SF Mono', monospace; font-size: 14px; color: var(--text-dark); font-weight: 600; }
+    .endpoint-body { padding: 20px; }
+    .param-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    .param-table th {
+      text-align: left; padding: 8px 12px; font-size: 12px; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--text-light); border-bottom: 1px solid var(--border);
+    }
+    .param-table td { padding: 8px 12px; font-size: 14px; border-bottom: 1px solid var(--border); }
+    .param-table code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .type-badge {
+      display: inline-block; font-size: 11px; font-weight: 600; color: var(--primary);
+      background: rgba(99,91,255,0.08); padding: 2px 8px; border-radius: 4px;
+    }
+    .required { color: var(--danger); font-size: 11px; font-weight: 600; }
+    .optional { color: var(--text-light); font-size: 11px; }
+    .alert {
+      padding: 16px 20px; border-radius: 8px; font-size: 14px; margin: 16px 0;
+    }
+    .alert-info { background: rgba(99,91,255,0.06); border-left: 3px solid var(--primary); }
+    .alert-warning { background: rgba(245,166,35,0.08); border-left: 3px solid var(--warning); }
+    @media (max-width: 768px) {
+      .docs-sidebar { display: none; }
+      .docs-main { margin-left: 0; padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="container">
+    <a href="index.html" class="nav-logo"><span>ROXEX</span>Pay</a>
+    <div class="nav-links">
+      <a href="index.html#features">Features</a>
+      <a href="index.html#pricing">Pricing</a>
+      <a href="docs.html" style="color:var(--primary);font-weight:600">Docs</a>
+      <a href="dashboard.html" class="btn btn-sm btn-outline">Dashboard</a>
+    </div>
+  </div>
+</nav>
+
+<div class="docs-layout">
+
+  <!-- Sidebar -->
+  <aside class="docs-sidebar">
+    <h4>Getting Started</h4>
+    <a href="#quickstart" class="active">Quick Start</a>
+    <a href="#authentication">Authentication</a>
+    <a href="#fees">Fees</a>
+    <h4>API Reference</h4>
+    <a href="#create-payment">Create Payment</a>
+    <a href="#get-payment">Get Payment</a>
+    <a href="#confirm-payment">Confirm Payment</a>
+    <a href="#create-refund">Create Refund</a>
+    <a href="#get-balance">Get Balance</a>
+    <a href="#checkout">Hosted Checkout</a>
+    <h4>Guides</h4>
+    <a href="#webhooks">Webhooks</a>
+    <a href="#errors">Error Handling</a>
+    <a href="#sdks">SDKs</a>
+  </aside>
+
+  <!-- Main -->
+  <main class="docs-main" id="api">
+
+    <h1 id="quickstart">Quick Start</h1>
+    <p>Get started with ROXEXPay in 3 steps. Accept payments with a single API call.</p>
+
+    <h3>1. Get your API keys</h3>
+    <p>Create a free account at <a href="dashboard.html#signup">dashboard.roxexpay.io</a>. Your API keys are generated instantly — no approval process, no KYC delays.</p>
+
+    <h3>2. Create a payment</h3>
+    <div class="code-block">
+      <span class="code-label">curl</span>
+      <pre>
+curl -X POST <span class="code-string">https://api.roxexpay.io/v1/payments</span> \
+  -H <span class="code-string">"Authorization: Bearer sk_live_your_key"</span> \
+  -H <span class="code-string">"Content-Type: application/json"</span> \
+  -d <span class="code-string">'{
+    "amount": 2500,
+    "currency": "EUR",
+    "description": "Premium plan"
+  }'</span></pre>
+    </div>
+
+    <h3>3. Redirect to checkout</h3>
+    <p>Use the <code>checkout_url</code> from the response to send your customer to our hosted checkout page. They pay with card — Settlement happens instantly under the hood.</p>
+    <div class="code-block">
+      <span class="code-label">response</span>
+      <pre>
+{
+  <span class="code-string">"id"</span>: <span class="code-string">"pay_a1b2c3d4e5f6"</span>,
+  <span class="code-string">"amount"</span>: 2500,
+  <span class="code-string">"currency"</span>: <span class="code-string">"EUR"</span>,
+  <span class="code-string">"status"</span>: <span class="code-string">"pending"</span>,
+  <span class="code-string">"fee"</span>: 25,
+  <span class="code-string">"net"</span>: 2475,
+  <span class="code-string">"checkout_url"</span>: <span class="code-string">"https://pay.roxexpay.io/checkout/pay_a1b2c3d4e5f6"</span>
+}</pre>
+    </div>
+
+    <div class="alert alert-info">
+      <strong>That's it.</strong> When the customer pays, you receive the funds instantly. No 2-day hold, no rolling payouts.
+    </div>
+
+    <!-- Authentication -->
+    <h2 id="authentication">Authentication</h2>
+    <p>All API requests require authentication via a Bearer token in the <code>Authorization</code> header.</p>
+    <div class="code-block">
+      <pre>Authorization: Bearer <span class="code-string">sk_live_your_secret_key</span></pre>
+    </div>
+    <p>You have two types of keys:</p>
+    <ul>
+      <li><strong>Secret key</strong> (<code>sk_live_...</code>) — Use server-side only. Required for creating payments, refunds, and reading balance.</li>
+      <li><strong>Public key</strong> (<code>pk_live_...</code>) — Safe for client-side. Used for the checkout widget.</li>
+    </ul>
+    <div class="alert alert-warning">
+      <strong>Never expose your secret key</strong> in client-side code, GitHub repos, or logs.
+    </div>
+
+    <!-- Fees -->
+    <h2 id="fees">Fees</h2>
+    <p>ROXEXPay charges <strong>1% per successful transaction</strong>. That's it. No fixed fee, no monthly costs, no setup charges.</p>
+    <table class="param-table">
+      <tr><td><strong>Fee</strong></td><td>1% of transaction amount</td></tr>
+      <tr><td><strong>Minimum fee</strong></td><td>$0.01</td></tr>
+      <tr><td><strong>Fixed fee</strong></td><td>$0.00</td></tr>
+      <tr><td><strong>Monthly fee</strong></td><td>$0.00</td></tr>
+      <tr><td><strong>Minimum payout</strong></td><td>$0.00</td></tr>
+    </table>
+    <p style="margin-top:16px"><strong>Comparison on $100:</strong> ROXEXPay = $1.00 | Stripe = $3.20 | PayPal = $3.20</p>
+
+    <!-- Create Payment -->
+    <h2 id="create-payment">Create Payment</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method method-post">POST</span>
+        <span class="endpoint-path">/v1/payments</span>
+      </div>
+      <div class="endpoint-body">
+        <p>Creates a new payment and returns a checkout URL.</p>
+        <h3>Parameters</h3>
+        <table class="param-table">
+          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>amount</code></td>
+              <td><span class="type-badge">integer</span></td>
+              <td><span class="required">required</span></td>
+              <td>Amount in cents (e.g., 1050 = $10.50)</td>
+            </tr>
+            <tr>
+              <td><code>currency</code></td>
+              <td><span class="type-badge">string</span></td>
+              <td><span class="required">required</span></td>
+              <td><code>EUR</code> or <code>USD</code></td>
+            </tr>
+            <tr>
+              <td><code>description</code></td>
+              <td><span class="type-badge">string</span></td>
+              <td><span class="optional">optional</span></td>
+              <td>Description shown to customer on checkout</td>
+            </tr>
+            <tr>
+              <td><code>metadata</code></td>
+              <td><span class="type-badge">object</span></td>
+              <td><span class="optional">optional</span></td>
+              <td>Key-value pairs for your reference</td>
+            </tr>
+          </tbody>
+        </table>
+        <h3>Response</h3>
+        <div class="code-block" style="margin-top:12px">
+          <pre>
+{
+  <span class="code-string">"id"</span>: <span class="code-string">"pay_a1b2c3d4e5f6"</span>,
+  <span class="code-string">"amount"</span>: 1050,
+  <span class="code-string">"currency"</span>: <span class="code-string">"EUR"</span>,
+  <span class="code-string">"status"</span>: <span class="code-string">"pending"</span>,
+  <span class="code-string">"fee"</span>: 11,
+  <span class="code-string">"net"</span>: 1039,
+  <span class="code-string">"description"</span>: <span class="code-string">"Order #1234"</span>,
+  <span class="code-string">"checkout_url"</span>: <span class="code-string">"https://pay.roxexpay.io/checkout/pay_a1b2c3d4e5f6"</span>,
+  <span class="code-string">"created"</span>: <span class="code-string">"2026-01-15T10:30:00Z"</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Get Payment -->
+    <h2 id="get-payment">Get Payment</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/v1/payments/:id</span>
+      </div>
+      <div class="endpoint-body">
+        <p>Retrieves the details of a payment by its ID.</p>
+        <h3>Response</h3>
+        <div class="code-block" style="margin-top:12px">
+          <pre>
+{
+  <span class="code-string">"id"</span>: <span class="code-string">"pay_a1b2c3d4e5f6"</span>,
+  <span class="code-string">"amount"</span>: 1050,
+  <span class="code-string">"currency"</span>: <span class="code-string">"EUR"</span>,
+  <span class="code-string">"status"</span>: <span class="code-string">"succeeded"</span>,
+  <span class="code-string">"fee"</span>: 11,
+  <span class="code-string">"net"</span>: 1039,
+  <span class="code-string">"settlement_units"</span>: 18420,
+  <span class="code-string">"settlement_txid"</span>: <span class="code-string">"abc123...def456"</span>,
+  <span class="code-string">"exchange_rate"</span>: 57.03,
+  <span class="code-string">"stripe_would_charge"</span>: 60,
+  <span class="code-string">"you_saved"</span>: 49,
+  <span class="code-string">"created"</span>: <span class="code-string">"2026-01-15T10:30:00Z"</span>,
+  <span class="code-string">"confirmed"</span>: <span class="code-string">"2026-01-15T10:30:01Z"</span>
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm Payment -->
+    <h2 id="confirm-payment">Confirm Payment</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method method-post">POST</span>
+        <span class="endpoint-path">/v1/payments/:id/confirm</span>
+      </div>
+      <div class="endpoint-body">
+        <p>Confirms a pending payment. This is called automatically when the customer completes the hosted checkout. You can also call it directly for server-to-server integrations.</p>
+        <div class="alert alert-info">
+          The payment is settled instantly through our proprietary network. The customer never sees the underlying technology.
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Refund -->
+    <h2 id="create-refund">Create Refund</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method method-post">POST</span>
+        <span class="endpoint-path">/v1/refunds</span>
+      </div>
+      <div class="endpoint-body">
+        <p>Refunds a succeeded payment. Full or partial.</p>
+        <h3>Parameters</h3>
+        <table class="param-table">
+          <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>payment_id</code></td>
+              <td><span class="type-badge">string</span></td>
+              <td><span class="required">required</span></td>
+              <td>ID of the payment to refund</td>
+            </tr>
+            <tr>
+              <td><code>amount</code></td>
+              <td><span class="type-badge">integer</span></td>
+              <td><span class="optional">optional</span></td>
+              <td>Amount in cents. Omit for full refund.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="code-block" style="margin-top:16px">
+          <span class="code-label">curl</span>
+          <pre>
+curl -X POST <span class="code-string">https://api.roxexpay.io/v1/refunds</span> \
+  -H <span class="code-string">"Authorization: Bearer sk_live_your_key"</span> \
+  -d <span class="code-string">'{"payment_id": "pay_a1b2c3d4e5f6"}'</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Get Balance -->
+    <h2 id="get-balance">Get Balance</h2>
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <span class="method method-get">GET</span>
+        <span class="endpoint-path">/v1/balance</span>
+      </div>
+      <div class="endpoint-body">
+        <p>Returns your current available balance.</p>
+        <div class="code-block" style="margin-top:12px">
+          <pre>
+{
+  <span class="code-string">"balance_eur"</span>: 125430,
+  <span class="code-string">"balance_usd"</span>: 0,
+  <span class="code-string">"total_revenue"</span>: 892100,
+  <span class="code-string">"total_fees"</span>: 8921,
+  <span class="code-string">"total_transactions"</span>: 47,
+  <span class="code-string">"total_saved_vs_stripe"</span>: 17430
+}</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hosted Checkout -->
+    <h2 id="checkout">Hosted Checkout</h2>
+    <p>ROXEXPay provides a beautiful, conversion-optimized hosted checkout page. Just redirect your customer to the <code>checkout_url</code> from the payment response.</p>
+    <div class="code-block">
+      <span class="code-label">html</span>
+      <pre>
+<span class="code-comment">&lt;!-- Redirect after creating a payment --&gt;</span>
+&lt;a href=<span class="code-string">"https://pay.roxexpay.io/checkout/pay_a1b2c3d4e5f6"</span>&gt;
+  Pay now
+&lt;/a&gt;
+
+<span class="code-comment">&lt;!-- Or redirect via JavaScript --&gt;</span>
+<span class="code-keyword">window.location.href</span> = response.checkout_url;</pre>
+    </div>
+    <p>The checkout page handles card input, payment processing, and success/error states. After payment, the customer is redirected to your success URL.</p>
+
+    <!-- Webhooks -->
+    <h2 id="webhooks">Webhooks</h2>
+    <p>Receive real-time notifications when payment events occur. Configure your webhook URL in <a href="dashboard.html">Dashboard &rarr; Settings</a>.</p>
+    <h3>Events</h3>
+    <table class="param-table">
+      <thead><tr><th>Event</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>payment.succeeded</code></td><td>Payment confirmed and settled</td></tr>
+        <tr><td><code>payment.failed</code></td><td>Payment failed</td></tr>
+        <tr><td><code>refund.created</code></td><td>Refund processed</td></tr>
+      </tbody>
+    </table>
+    <h3>Webhook payload</h3>
+    <div class="code-block" style="margin-top:12px">
+      <pre>
+{
+  <span class="code-string">"event"</span>: <span class="code-string">"payment.succeeded"</span>,
+  <span class="code-string">"data"</span>: {
+    <span class="code-string">"id"</span>: <span class="code-string">"pay_a1b2c3d4e5f6"</span>,
+    <span class="code-string">"amount"</span>: 2500,
+    <span class="code-string">"currency"</span>: <span class="code-string">"EUR"</span>,
+    <span class="code-string">"status"</span>: <span class="code-string">"succeeded"</span>,
+    <span class="code-string">"fee"</span>: 25,
+    <span class="code-string">"net"</span>: 2475
+  },
+  <span class="code-string">"created"</span>: <span class="code-string">"2026-01-15T10:30:01Z"</span>
+}</pre>
+    </div>
+
+    <!-- Errors -->
+    <h2 id="errors">Error Handling</h2>
+    <p>ROXEXPay uses standard HTTP status codes. All errors return a JSON body with <code>error</code> and <code>message</code> fields.</p>
+    <table class="param-table">
+      <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>200</code></td><td>Success</td></tr>
+        <tr><td><code>400</code></td><td>Bad request — invalid parameters</td></tr>
+        <tr><td><code>401</code></td><td>Unauthorized — missing or invalid API key</td></tr>
+        <tr><td><code>404</code></td><td>Not found — payment does not exist</td></tr>
+        <tr><td><code>500</code></td><td>Server error</td></tr>
+      </tbody>
+    </table>
+    <div class="code-block" style="margin-top:16px">
+      <span class="code-label">error</span>
+      <pre>
+{
+  <span class="code-string">"error"</span>: <span class="code-string">"invalid_amount"</span>,
+  <span class="code-string">"message"</span>: <span class="code-string">"Amount must be a positive integer (in cents)"</span>
+}</pre>
+    </div>
+
+    <!-- SDKs -->
+    <h2 id="sdks">SDKs</h2>
+    <p>Official SDKs coming soon. For now, ROXEXPay works great with cURL, fetch, or any HTTP client.</p>
+
+    <h3>JavaScript</h3>
+    <div class="code-block">
+      <span class="code-label">js</span>
+      <pre>
+<span class="code-keyword">const</span> response = <span class="code-keyword">await</span> fetch(<span class="code-string">'https://api.roxexpay.io/v1/payments'</span>, {
+  method: <span class="code-string">'POST'</span>,
+  headers: {
+    <span class="code-string">'Authorization'</span>: <span class="code-string">'Bearer sk_live_your_key'</span>,
+    <span class="code-string">'Content-Type'</span>: <span class="code-string">'application/json'</span>
+  },
+  body: JSON.stringify({
+    amount: 2500,
+    currency: <span class="code-string">'EUR'</span>,
+    description: <span class="code-string">'Premium plan'</span>
+  })
+});
+<span class="code-keyword">const</span> payment = <span class="code-keyword">await</span> response.json();
+window.location.href = payment.checkout_url;</pre>
+    </div>
+
+    <h3>Python</h3>
+    <div class="code-block">
+      <span class="code-label">python</span>
+      <pre>
+<span class="code-keyword">import</span> requests
+
+response = requests.post(
+    <span class="code-string">"https://api.roxexpay.io/v1/payments"</span>,
+    headers={<span class="code-string">"Authorization"</span>: <span class="code-string">"Bearer sk_live_your_key"</span>},
+    json={
+        <span class="code-string">"amount"</span>: 2500,
+        <span class="code-string">"currency"</span>: <span class="code-string">"EUR"</span>,
+        <span class="code-string">"description"</span>: <span class="code-string">"Premium plan"</span>
+    }
+)
+payment = response.json()
+<span class="code-keyword">print</span>(payment[<span class="code-string">"checkout_url"</span>])</pre>
+    </div>
+
+    <div style="margin-top:64px;padding:32px;background:rgba(99,91,255,0.05);border-radius:12px;text-align:center">
+      <h3 style="color:var(--text-dark);margin-bottom:8px">Ready to integrate?</h3>
+      <p>Create your free account and start accepting payments in minutes.</p>
+      <a href="dashboard.html#signup" class="btn btn-primary" style="margin-top:12px">Get your API keys &rarr;</a>
+    </div>
+
+  </main>
+</div>
+
+</body>
+</html>

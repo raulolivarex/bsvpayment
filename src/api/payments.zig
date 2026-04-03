@@ -342,7 +342,7 @@ pub const PaymentEngine = struct {
 ///   └── BSV network:       ~$0.001 (absorbed by ROXEX, not charged)
 ///
 ///   Stripe charges 2.9% + 30c = 3.2% on $100.
-///   BSVPay charges 1.0% flat  = 1.0% on $100.
+///   ROXEXPay charges 1.0% flat  = 1.0% on $100.
 ///   Merchant saves 2.2% on every transaction.
 ///
 ///   Minimum fee: 1 cent (enables micropayments from $0.01)
@@ -511,7 +511,7 @@ test "fee calculation" {
     // $0.10 = 10 cents → 1.0% = 0, min 1 cent
     try std.testing.expectEqual(@as(u64, 1), calculateFee(10));
 
-    // Savings vs Stripe on $100: Stripe $3.20 - BSVPay $1.00 = $2.20
+    // Savings vs Stripe on $100: Stripe $3.20 - ROXEXPay $1.00 = $2.20
     try std.testing.expectEqual(@as(u64, 220), savingsVsStripe(10000));
 }
 

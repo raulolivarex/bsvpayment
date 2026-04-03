@@ -16,7 +16,7 @@ pub fn generateCheckoutPage(payment: *const payments_mod.Payment, allocator: std
         \\<head>
         \\<meta charset="UTF-8">
         \\<meta name="viewport" content="width=device-width, initial-scale=1.0">
-        \\<title>BSV Pay — Checkout</title>
+        \\<title>ROXEXPay — Checkout</title>
         \\<style>
         \\* {{ margin: 0; padding: 0; box-sizing: border-box; }}
         \\body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f6f9fc; display: flex; justify-content: center; align-items: center; min-height: 100vh; }}
@@ -41,7 +41,7 @@ pub fn generateCheckoutPage(payment: *const payments_mod.Payment, allocator: std
         \\</head>
         \\<body>
         \\<div class="checkout" id="checkout-form">
-        \\  <div class="logo"><h1><span>BSV</span>Pay</h1></div>
+        \\  <div class="logo"><h1>ROXEXPay</h1></div>
         \\  <div class="amount">{s}{d}.{d:0>2} <small>{s}</small></div>
         \\  <div class="desc">{s}</div>
         \\  <form onsubmit="handlePay(event)">
@@ -65,15 +65,15 @@ pub fn generateCheckoutPage(payment: *const payments_mod.Payment, allocator: std
         \\    </div>
         \\    <button type="submit" class="pay-btn">Pay {s}{d}.{d:0>2}</button>
         \\  </form>
-        \\  <div class="secure">Secured by BSV instant settlement</div>
+        \\  <div class="secure">Secured by ROXEXPay instant settlement</div>
         \\  <div style="text-align:center"><span class="badge">0.5% fee &middot; Instant &middot; No middlemen</span></div>
         \\</div>
         \\<div class="checkout success" id="success-msg">
-        \\  <div class="logo"><h1><span>BSV</span>Pay</h1></div>
+        \\  <div class="logo"><h1>ROXEXPay</h1></div>
         \\  <div style="font-size:64px;margin:20px">&#10003;</div>
         \\  <h2>Payment Successful!</h2>
         \\  <p style="color:#666;margin-top:8px">Your payment of {s}{d}.{d:0>2} has been processed.</p>
-        \\  <p style="color:#999;margin-top:16px;font-size:12px">Settled via BSV in &lt;1 second</p>
+        \\  <p style="color:#999;margin-top:16px;font-size:12px">Settled instantly via ROXEXPay</p>
         \\</div>
         \\<script>
         \\async function handlePay(e) {{
@@ -139,5 +139,5 @@ test "checkout page generation" {
     @memcpy(payment.description[0..4], "Test");
     const html = try generateCheckoutPage(&payment, allocator);
     defer allocator.free(html);
-    try std.testing.expect(std.mem.indexOf(u8, html, "BSV") != null);
+    try std.testing.expect(std.mem.indexOf(u8, html, "ROXEX") != null);
 }
