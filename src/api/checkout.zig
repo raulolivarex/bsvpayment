@@ -65,8 +65,8 @@ pub fn generateCheckoutPage(payment: *const payments_mod.Payment, allocator: std
         \\    </div>
         \\    <button type="submit" class="pay-btn">Pay {s}{d}.{d:0>2}</button>
         \\  </form>
-        \\  <div class="secure">Secured by BSV blockchain settlement</div>
-        \\  <div style="text-align:center"><span class="badge">Instant 0-conf &middot; &lt;$0.001 fee</span></div>
+        \\  <div class="secure">Secured by BSV instant settlement</div>
+        \\  <div style="text-align:center"><span class="badge">0.5% fee &middot; Instant &middot; No middlemen</span></div>
         \\</div>
         \\<div class="checkout success" id="success-msg">
         \\  <div class="logo"><h1><span>BSV</span>Pay</h1></div>

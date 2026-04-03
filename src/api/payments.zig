@@ -334,15 +334,31 @@ pub const PaymentEngine = struct {
     }
 };
 
-/// Fee calculation: 2.9% + 30 cents (like Stripe) — but much cheaper BSV settlement
+/// Fee calculation: 0.5% flat — no fixed fee
+/// BSV settles at ~$0.001, so we pass the savings to merchants.
+/// Stripe charges 2.9% + 30c = $3.20 on $100. We charge $0.50.
+/// Minimum fee: 1 cent (allows true micropayments down to $0.01)
 pub fn calculateFee(amount: u64) u64 {
-    const percentage_fee = (amount * 29) / 1000; // 2.9%
-    return percentage_fee + 30; // + 30 cents
+    const fee = (amount * 5) / 1000; // 0.5%
+    return if (fee < 1) 1 else fee;
 }
 
 /// Net amount after fees
 pub fn netAmount(amount: u64) u64 {
-    return amount - calculateFee(amount);
+    const fee = calculateFee(amount);
+    return if (fee >= amount) 0 else amount - fee;
+}
+
+/// Compare with Stripe fees for display
+pub fn stripeFee(amount: u64) u64 {
+    return (amount * 29) / 1000 + 30; // 2.9% + 30c
+}
+
+/// Savings vs Stripe
+pub fn savingsVsStripe(amount: u64) u64 {
+    const our_fee = calculateFee(amount);
+    const their_fee = stripeFee(amount);
+    return if (their_fee > our_fee) their_fee - our_fee else 0;
 }
 
 fn hexEncode16(bytes: []const u8) [16]u8 {
@@ -451,11 +467,17 @@ fn deserializePayment(data: *const [PAYMENT_SIZE]u8) Payment {
 }
 
 test "fee calculation" {
-    // $10.00 = 1000 cents → 2.9% = 29 cents + 30 cents = 59 cents fee
-    try std.testing.expectEqual(@as(u64, 59), calculateFee(1000));
+    // $10.00 = 1000 cents → 0.5% = 5 cents (vs Stripe's 59 cents)
+    try std.testing.expectEqual(@as(u64, 5), calculateFee(1000));
 
-    // $100.00 = 10000 cents → 2.9% = 290 + 30 = 320 cents = $3.20
-    try std.testing.expectEqual(@as(u64, 320), calculateFee(10000));
+    // $100.00 = 10000 cents → 0.5% = 50 cents (vs Stripe's $3.20)
+    try std.testing.expectEqual(@as(u64, 50), calculateFee(10000));
+
+    // $0.10 = 10 cents → 0.5% = 0, min 1 cent (Stripe can't even process this)
+    try std.testing.expectEqual(@as(u64, 1), calculateFee(10));
+
+    // Savings vs Stripe on $100
+    try std.testing.expectEqual(@as(u64, 270), savingsVsStripe(10000));
 }
 
 test "payment status roundtrip" {

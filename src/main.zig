@@ -34,7 +34,7 @@ comptime {
     _ = @import("api/checkout.zig");
 }
 
-const VERSION = "0.4.0";
+const VERSION = "0.5.0";
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -1160,11 +1160,17 @@ fn cmdMerchantRegister(allocator: std.mem.Allocator) !void {
         \\  │  ⚠ Never share your secret key!                       │
         \\  └──────────────────────────────────────────────────────┘
         \\
+        \\  Why BSVPay:
+        \\    Fee: 0.5% flat (Stripe charges 2.9% + 30c)
+        \\    Settlement: Instant (Stripe: 2-7 days)
+        \\    Micropayments: From $0.01
+        \\    Access: Global, no KYC delays
+        \\
         \\  Quick start:
         \\    1. bsv-pay api start
         \\    2. curl -X POST http://localhost:3000/v1/payments \
         \\         -H "Authorization: Bearer {s}" \
-        \\         -d '{{"amount":1000,"currency":"USD","description":"Test"}}'
+        \\         -d '{{"amount":1000,"currency":"EUR","description":"Order #123"}}'
         \\
     , .{
         merchant.getName(),
