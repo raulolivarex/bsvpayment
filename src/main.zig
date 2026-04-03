@@ -7,6 +7,10 @@ const hash_mod = @import("crypto/hash.zig");
 const account_mod = @import("account/account.zig");
 const exchange_mod = @import("exchange/rates.zig");
 const transfer_mod = @import("pay/transfer.zig");
+const merchant_mod = @import("api/merchant.zig");
+const payments_mod = @import("api/payments.zig");
+const server_mod = @import("api/server.zig");
+const checkout_mod = @import("api/checkout.zig");
 
 // Re-export modules for tests
 comptime {
@@ -24,6 +28,10 @@ comptime {
     _ = @import("account/account.zig");
     _ = @import("exchange/rates.zig");
     _ = @import("pay/transfer.zig");
+    _ = @import("api/merchant.zig");
+    _ = @import("api/payments.zig");
+    _ = @import("api/server.zig");
+    _ = @import("api/checkout.zig");
 }
 
 const VERSION = "0.4.0";
@@ -80,6 +88,37 @@ pub fn main() !void {
         try cmdSend(allocator);
     } else if (std.mem.eql(u8, command, "rates")) {
         try cmdRates(allocator);
+    } else if (std.mem.eql(u8, command, "api")) {
+        if (args.len < 3) {
+            printApiUsage();
+            return;
+        }
+        const sub = args[2];
+        if (std.mem.eql(u8, sub, "start")) {
+            const port: u16 = if (args.len >= 4) std.fmt.parseInt(u16, args[3], 10) catch 3000 else 3000;
+            try cmdApiStart(allocator, port);
+        } else {
+            printApiUsage();
+        }
+    } else if (std.mem.eql(u8, command, "merchant")) {
+        if (args.len < 3) {
+            printMerchantUsage();
+            return;
+        }
+        const sub = args[2];
+        if (std.mem.eql(u8, sub, "register")) {
+            try cmdMerchantRegister(allocator);
+        } else if (std.mem.eql(u8, sub, "keys")) {
+            try cmdMerchantKeys(allocator);
+        } else if (std.mem.eql(u8, sub, "balance")) {
+            try cmdMerchantBalance(allocator);
+        } else if (std.mem.eql(u8, sub, "dashboard")) {
+            try cmdMerchantDashboard(allocator);
+        } else if (std.mem.eql(u8, sub, "list")) {
+            try cmdMerchantList(allocator);
+        } else {
+            printMerchantUsage();
+        }
     } else if (std.mem.eql(u8, command, "wallet")) {
         if (args.len < 3) {
             printWalletUsage();
@@ -140,6 +179,15 @@ fn printUsage() void {
         \\  ║         bsv-pay v{s}              ║
         \\  ║   Ultra-fast BSV payments in Zig     ║
         \\  ╚══════════════════════════════════════╝
+        \\
+        \\  PAYMENT API (Stripe-style):
+        \\
+        \\    api start [port]          Start REST API server (default 3000)
+        \\    merchant register         Register as merchant (get API keys)
+        \\    merchant keys             View your API keys
+        \\    merchant balance          View merchant balance
+        \\    merchant dashboard        View payment history
+        \\    merchant list             List all merchants
         \\
         \\  SEND MONEY (Bizum-style):
         \\
@@ -1017,6 +1065,260 @@ fn parseAmount(str: []const u8, currency: account_mod.Currency) ?u64 {
         const whole = std.fmt.parseInt(u64, str, 10) catch return null;
         return whole * 100;
     }
+}
+
+// ═══════════════════════════════════════════
+// API / MERCHANT COMMANDS
+// ═══════════════════════════════════════════
+
+fn printApiUsage() void {
+    std.debug.print(
+        \\
+        \\  API COMMANDS:
+        \\
+        \\    api start [port]    Start REST API server (default: 3000)
+        \\
+        \\  Example:
+        \\    bsv-pay api start 8080
+        \\
+    , .{});
+}
+
+fn printMerchantUsage() void {
+    std.debug.print(
+        \\
+        \\  MERCHANT COMMANDS:
+        \\
+        \\    merchant register     Register new merchant account
+        \\    merchant keys         View API keys (sk_live / pk_live)
+        \\    merchant balance      View balance and stats
+        \\    merchant dashboard    View payment history
+        \\    merchant list         List all merchants
+        \\
+    , .{});
+}
+
+fn cmdApiStart(allocator: std.mem.Allocator, port: u16) !void {
+    const server = server_mod.ApiServer.init(allocator, port);
+    try server.start();
+}
+
+fn cmdMerchantRegister(allocator: std.mem.Allocator) !void {
+    std.debug.print(
+        \\
+        \\  ╔══════════════════════════════════════╗
+        \\  ║       Register as Merchant            ║
+        \\  ╚══════════════════════════════════════╝
+        \\
+    , .{});
+
+    std.debug.print("  Business name: ", .{});
+    var name_buf: [64]u8 = undefined;
+    const name = readLine(&name_buf);
+
+    std.debug.print("  Email: ", .{});
+    var email_buf: [64]u8 = undefined;
+    const email = readLine(&email_buf);
+
+    const pw1 = try readPassword("  Password (min 8 chars): ");
+    const pw2 = try readPassword("  Confirm password: ");
+    const pass1 = getPasswordSlice(&pw1);
+    const pass2 = getPasswordSlice(&pw2);
+
+    if (!std.mem.eql(u8, pass1, pass2)) {
+        std.debug.print("\n  ✗ Passwords don't match!\n", .{});
+        return;
+    }
+    if (pass1.len < 8) {
+        std.debug.print("\n  ✗ Password must be at least 8 characters!\n", .{});
+        return;
+    }
+
+    const mgr = merchant_mod.MerchantManager.init(allocator);
+    const merchant = mgr.register(name, email, pass1) catch |err| {
+        std.debug.print("\n  ✗ Registration error: {}\n", .{err});
+        return;
+    };
+
+    std.debug.print(
+        \\
+        \\  ╔══════════════════════════════════════════════════════╗
+        \\  ║       ✦ Merchant Registered Successfully              ║
+        \\  ╚══════════════════════════════════════════════════════╝
+        \\
+        \\  Business    : {s}
+        \\  Email       : {s}
+        \\  Merchant ID : {s}
+        \\
+        \\  ┌──────────────────────────────────────────────────────┐
+        \\  │  API KEYS (save these!)                               │
+        \\  │                                                       │
+        \\  │  Secret:  {s}
+        \\  │  Public:  {s}
+        \\  │                                                       │
+        \\  │  Use the secret key in Authorization: Bearer header   │
+        \\  │  ⚠ Never share your secret key!                       │
+        \\  └──────────────────────────────────────────────────────┘
+        \\
+        \\  Quick start:
+        \\    1. bsv-pay api start
+        \\    2. curl -X POST http://localhost:3000/v1/payments \
+        \\         -H "Authorization: Bearer {s}" \
+        \\         -d '{{"amount":1000,"currency":"USD","description":"Test"}}'
+        \\
+    , .{
+        merchant.getName(),
+        merchant.getEmail(),
+        merchant.getId(),
+        merchant.api_keys.getSecretKey(),
+        merchant.api_keys.getPublicKey(),
+        merchant.api_keys.getSecretKey(),
+    });
+}
+
+fn cmdMerchantKeys(allocator: std.mem.Allocator) !void {
+    std.debug.print("  Merchant ID: ", .{});
+    var id_buf: [32]u8 = undefined;
+    const merchant_id = readLine(&id_buf);
+
+    const mgr = merchant_mod.MerchantManager.init(allocator);
+    const merchant = mgr.loadMerchant(merchant_id) catch {
+        std.debug.print("\n  ✗ Merchant not found.\n", .{});
+        return;
+    };
+
+    std.debug.print(
+        \\
+        \\  API Keys for {s}:
+        \\  ────────────────────────────────────────
+        \\  Secret: {s}
+        \\  Public: {s}
+        \\  ────────────────────────────────────────
+        \\
+    , .{
+        merchant.getName(),
+        merchant.api_keys.getSecretKey(),
+        merchant.api_keys.getPublicKey(),
+    });
+}
+
+fn cmdMerchantBalance(allocator: std.mem.Allocator) !void {
+    std.debug.print("  Merchant ID: ", .{});
+    var id_buf: [32]u8 = undefined;
+    const merchant_id = readLine(&id_buf);
+
+    const mgr = merchant_mod.MerchantManager.init(allocator);
+    const merchant = mgr.loadMerchant(merchant_id) catch {
+        std.debug.print("\n  ✗ Merchant not found.\n", .{});
+        return;
+    };
+
+    const usd_whole: u64 = @intCast(@divTrunc(@as(i64, @intCast(@abs(merchant.balance_usd))), 100));
+    const usd_frac: u64 = @intCast(@mod(@as(i64, @intCast(@abs(merchant.balance_usd))), 100));
+    const eur_whole: u64 = @intCast(@divTrunc(@as(i64, @intCast(@abs(merchant.balance_eur))), 100));
+    const eur_frac: u64 = @intCast(@mod(@as(i64, @intCast(@abs(merchant.balance_eur))), 100));
+
+    std.debug.print(
+        \\
+        \\  ✦ Merchant: {s}
+        \\  ────────────────────────────────────────
+        \\  Balances:
+        \\    BSV : {d} satoshis
+        \\    USD : ${d}.{d:0>2}
+        \\    EUR : €{d}.{d:0>2}
+        \\
+        \\  Stats:
+        \\    Total payments : {d}
+        \\  ────────────────────────────────────────
+        \\
+    , .{
+        merchant.getName(),
+        merchant.balance_bsv,
+        usd_whole,
+        usd_frac,
+        eur_whole,
+        eur_frac,
+        merchant.total_payments,
+    });
+}
+
+fn cmdMerchantDashboard(allocator: std.mem.Allocator) !void {
+    std.debug.print("  Merchant ID: ", .{});
+    var id_buf: [32]u8 = undefined;
+    const merchant_id = readLine(&id_buf);
+
+    const mgr = merchant_mod.MerchantManager.init(allocator);
+    const merchant = mgr.loadMerchant(merchant_id) catch {
+        std.debug.print("\n  ✗ Merchant not found.\n", .{});
+        return;
+    };
+
+    const engine = payments_mod.PaymentEngine.init(allocator);
+    const payments = engine.listPayments(merchant_id) catch {
+        std.debug.print("\n  No payments found.\n", .{});
+        return;
+    };
+    defer allocator.free(payments);
+
+    std.debug.print(
+        \\
+        \\  ✦ Dashboard: {s}
+        \\  ════════════════════════════════════════════════
+        \\
+    , .{merchant.getName()});
+
+    if (payments.len == 0) {
+        std.debug.print("  No payments yet.\n\n", .{});
+        return;
+    }
+
+    std.debug.print("  {s:<22} {s:<10} {s:<10} {s:<12} {s}\n", .{ "Payment ID", "Amount", "Currency", "Status", "Description" });
+    std.debug.print("  ──────────────────────────────────────────────────────────────\n", .{});
+
+    for (payments) |p| {
+        const whole = p.amount / 100;
+        const frac = p.amount % 100;
+        var amt_buf: [20]u8 = undefined;
+        const amt_str = std.fmt.bufPrint(&amt_buf, "{d}.{d:0>2}", .{ whole, frac }) catch "?";
+
+        std.debug.print("  {s:<22} {s:<10} {s:<10} {s:<12} {s}\n", .{
+            p.getId(),
+            amt_str,
+            p.currency.symbol(),
+            p.status.toString(),
+            p.getDescription(),
+        });
+    }
+    std.debug.print("  ──────────────────────────────────────────────────────────────\n", .{});
+    std.debug.print("  Total: {d} payments\n\n", .{payments.len});
+}
+
+fn cmdMerchantList(allocator: std.mem.Allocator) !void {
+    const mgr = merchant_mod.MerchantManager.init(allocator);
+    const ids = mgr.listMerchants() catch {
+        std.debug.print("\n  No merchants found.\n", .{});
+        return;
+    };
+    defer {
+        for (ids) |id| allocator.free(id);
+        allocator.free(ids);
+    }
+
+    if (ids.len == 0) {
+        std.debug.print("\n  No merchants. Register with: bsv-pay merchant register\n", .{});
+        return;
+    }
+
+    std.debug.print("\n  Registered Merchants:\n  ────────────────────────────────────────\n", .{});
+    for (ids, 1..) |id, i| {
+        // Try loading to get name
+        if (mgr.loadMerchant(id)) |m| {
+            std.debug.print("  {d}. {s} (ID: {s})\n", .{ i, m.getName(), id });
+        } else |_| {
+            std.debug.print("  {d}. {s}\n", .{ i, id });
+        }
+    }
+    std.debug.print("  ────────────────────────────────────────\n\n", .{});
 }
 
 test "main module compiles" {
